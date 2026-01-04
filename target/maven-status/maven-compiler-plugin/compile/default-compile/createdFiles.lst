@@ -1,0 +1,6 @@
+org\example\punctuation\job\PunctuationSemanticJob.class
+org\example\punctuation\model\DataEvent.class
+org\example\punctuation\model\StreamElement.class
+org\example\punctuation\source\RandomEventSource.class
+org\example\punctuation\model\Punctuation.class
+org\example\punctuation\operators\PunctuationAwareAggregator.class
