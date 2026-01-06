@@ -1,6 +1,10 @@
-org\example\punctuation\job\PunctuationSemanticJob.class
-org\example\punctuation\model\DataEvent.class
+org\example\punctuation\operators\PunctuatedUnionOperator.class
 org\example\punctuation\model\StreamElement.class
-org\example\punctuation\source\RandomEventSource.class
-org\example\punctuation\model\Punctuation.class
-org\example\punctuation\operators\PunctuationAwareAggregator.class
+org\example\punctuation\job\TuckerReplicationJob.class
+org\example\punctuation\model\HourlyPunctuation.class
+org\example\punctuation\job\LocalTestJob.class
+org\example\punctuation\operators\NaiveUnionOperator.class
+org\example\punctuation\metrics\StateMetrics.class
+org\example\punctuation\operators\MetricsCollector.class
+org\example\punctuation\model\SensorReading.class
+org\example\punctuation\source\TemperatureSensorSource.class
