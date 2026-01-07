@@ -1,10 +1,7 @@
-org\example\punctuation\operators\PunctuatedUnionOperator.class
-org\example\punctuation\model\StreamElement.class
-org\example\punctuation\job\TuckerReplicationJob.class
-org\example\punctuation\model\HourlyPunctuation.class
-org\example\punctuation\job\LocalTestJob.class
-org\example\punctuation\operators\NaiveUnionOperator.class
-org\example\punctuation\metrics\StateMetrics.class
-org\example\punctuation\operators\MetricsCollector.class
-org\example\punctuation\model\SensorReading.class
-org\example\punctuation\source\TemperatureSensorSource.class
+org\example\model\SensorReading.class
+org\example\Main.class
+org\example\source\TemperatureGeneratorFunction.class
+org\example\model\StreamElement.class
+org\example\operators\PunctuatedUnionOperator.class
+org\example\model\HourlyPunctuation.class
+org\example\operators\NaiveUnionOperator.class

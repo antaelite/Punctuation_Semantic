@@ -1,10 +1,7 @@
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\job\LocalTestJob.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\job\TuckerReplicationJob.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\metrics\StateMetrics.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\model\HourlyPunctuation.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\model\SensorReading.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\model\StreamElement.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\operators\MetricsCollector.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\operators\NaiveUnionOperator.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\operators\PunctuatedUnionOperator.java
-C:\Users\louis\insa\punctuation-semantic\src\main\java\org\example\punctuation\source\TemperatureSensorSource.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\Main.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\model\HourlyPunctuation.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\model\SensorReading.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\model\StreamElement.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\operators\NaiveUnionOperator.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\operators\PunctuatedUnionOperator.java
+C:\Users\louis\insa\punctuation2\src\main\java\org\example\source\TemperatureGeneratorFunction.java
