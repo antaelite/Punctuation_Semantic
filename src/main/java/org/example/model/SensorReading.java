@@ -1,14 +1,13 @@
 package org.example.model;
 
 import java.io.Serial;
-import java.io.Serializable;
 import java.util.Objects;
 
 /**
  * Temperature sensor reading following Tucker et al. 2003 schema.
  * Schema: <sid, hour, minute, currentTemperature>
  */
-public class SensorReading implements StreamElement, Serializable {
+public class SensorReading implements StreamElement {
     @Serial
     private static final long serialVersionUID = 1L;
 
