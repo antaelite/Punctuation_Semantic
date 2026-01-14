@@ -34,6 +34,10 @@ public class HourlyPunctuation implements StreamElement, Serializable {
     }
 
     @Override
+    public String getKeyTaxi() {
+        return "NYC-TAXI";
+    }
+    @Override
     public long getTimestamp() {
         return timestamp;
     }

@@ -1,7 +1,0 @@
-org\example\model\SensorReading.class
-org\example\Main.class
-org\example\source\TemperatureGeneratorFunction.class
-org\example\model\StreamElement.class
-org\example\operators\PunctuatedUnionOperator.class
-org\example\model\HourlyPunctuation.class
-org\example\operators\NaiveUnionOperator.class

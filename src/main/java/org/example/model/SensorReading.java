@@ -34,6 +34,11 @@ public class SensorReading implements StreamElement, Serializable {
     }
 
     @Override
+    public String getKeyTaxi() {
+        return "";
+    }
+
+    @Override
     public String getKey() {
         return sid + "-" + hour;  // Key by sensor and hour for aggregation
     }

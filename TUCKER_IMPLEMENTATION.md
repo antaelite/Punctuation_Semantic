@@ -135,6 +135,19 @@ if (element.isPunctuation()) {
     mvn clean package -DskipTests
     mvn exec:exec
     ```
+    ### option 3: lancer ruckerMain avec intelliJ
+    1. Open the project in IntelliJ
+    2. Edit the Run Configuration for `TruckerMain`
+    3. Add VM Options: `--add-opens=java.base/java.util=ALL-UNNAMED--add-opens=java.base/java.lang=ALL-UNNAMED--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+    --add-opens=java.base/java.io=ALL-UNNAMED
+    --add-opens=java.base/java.nio=ALL-UNNAMED
+    --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+    --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+    --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+    --add-opens=java.base/sun.nio.cs=ALL-UNNAMED
+    --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED
+    --add-opens=java.base/java.time=ALL-UNNAMED`
+    4. Run `TruckerMain.java`
 
 ## Differences from Original Paper
 
