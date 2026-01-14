@@ -7,6 +7,9 @@ import java.io.Serializable;
  */
 public interface StreamElement extends Serializable {
     boolean isPunctuation();
+
+    String getKeyTaxi();
+
     long getTimestamp();
     String getKey(); // For MVP, we assume a String keys everything
 }
