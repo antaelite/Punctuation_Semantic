@@ -4,10 +4,11 @@ import java.io.Serial;
 import java.util.Objects;
 
 /**
- * Temperature sensor reading following Tucker et al. 2003 schema.
- * Schema: <sid, hour, minute, currentTemperature>
+ * Temperature sensor reading following Tucker et al. 2003 schema. Schema:
+ * <sid, hour, minute, currentTemperature>
  */
 public class SensorReading implements StreamElement {
+
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -17,7 +18,8 @@ public class SensorReading implements StreamElement {
     private double currentTemperature;   // Current temperature
     private long timestamp;
 
-    public SensorReading() {}
+    public SensorReading() {
+    }
 
     public SensorReading(String sid, int hour, int minute, double currentTemperature, long timestamp) {
         this.sid = sid;
@@ -33,11 +35,6 @@ public class SensorReading implements StreamElement {
     }
 
     @Override
-    public String getKeyTaxi() {
-        return "";
-    }
-
-    @Override
     public String getKey() {
         return sid + "-" + hour;  // Key by sensor and hour for aggregation
     }
@@ -45,6 +42,16 @@ public class SensorReading implements StreamElement {
     @Override
     public long getTimestamp() {
         return timestamp;
+    }
+
+    @Override
+    public Object getValue(String field) {
+        if ("hour".equals(field)) {
+            return hour;
+        } else if ("sid".equals(field)) {
+            return sid;
+        }
+        return null;
     }
 
     public String getSid() {
@@ -85,13 +92,17 @@ public class SensorReading implements StreamElement {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         SensorReading that = (SensorReading) o;
-        return hour == that.hour &&
-                minute == that.minute &&
-                Double.compare(that.currentTemperature, currentTemperature) == 0 &&
-                Objects.equals(sid, that.sid);
+        return hour == that.hour
+                && minute == that.minute
+                && Double.compare(that.currentTemperature, currentTemperature) == 0
+                && Objects.equals(sid, that.sid);
     }
 
     @Override
@@ -100,12 +111,18 @@ public class SensorReading implements StreamElement {
     }
 
     @Override
+    public Object getDeduplicationKey() {
+        return this;
+    }
+
+    @Override
     public String toString() {
-        return "SensorReading{" +
-                "sid='" + sid + '\'' +
-                ", hour=" + hour +
-                ", minute=" + minute +
-                ", currentTemperature=" + currentTemperature +
-                '}';
+
+        return "SensorReading{"
+                + "sid='" + sid + '\''
+                + ", hour=" + hour
+                + ", minute=" + minute
+                + ", currentTemperature=" + currentTemperature
+                + '}';
     }
 }

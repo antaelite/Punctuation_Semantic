@@ -1,120 +1,88 @@
-
 package org.example.operators;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.stream.StreamSupport;
 
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.metrics.Counter;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
-import org.example.model.HourlyPunctuation;
-import org.example.model.SensorReading;
+import org.example.model.Punctuation;
 import org.example.model.StreamElement;
 
 /**
- * Punctuated Union Operator (Duplicate Elimination) following Tucker et al. 2003.
- * WITH Punctuation optimization implementing KEEP and PASS invariants:
- * - KEEP Invariant: When punctuation arrives for hour X, purge all state for hour X
- * - PASS Invariant: Output results when punctuation arrives
- * - This prevents unbounded state growth (sawtooth pattern in Figure 2a)
+ * Unified Punctuated Union Operator (Duplicate Elimination). Works for any
+ * StreamElement by using getDeduplicationKey() and Punctuation generic fields.
  */
 public class PunctuatedUnionOperator extends KeyedProcessFunction<String, StreamElement, String> {
 
-    private MapState<SensorReading, Boolean> seenTuples;
-    private long tupleCount = 0;
-    private long punctuationsReceived = 0;
-
-    // Metrics for monitoring
-    private Counter tuplesProcessed;
-
+    // MapState: Key = DeduplicationKey (Object), Value = StreamElement
+    private transient MapState<Object, StreamElement> seenElements;
 
     @Override
     public void open(Configuration parameters) {
-        seenTuples = getRuntimeContext().getMapState(
-                new MapStateDescriptor<>("seen-tuples-punctuated", SensorReading.class, Boolean.class)
+        seenElements = getRuntimeContext().getMapState(
+                new MapStateDescriptor<>("unified-punctuated-seen", Object.class, StreamElement.class)
         );
-
-        // Register metrics
-        tuplesProcessed = getRuntimeContext()
-                .getMetricGroup()
-                .counter("tuples_processed");
-
-        getRuntimeContext()
-                .getMetricGroup()
-                .gauge("state_size", () -> {
-                    try {
-                        return getStateSize();
-                    } catch (Exception e) {
-                        return -1L;
-                    }
-                });
-    }
-
-    private long getStateSize() throws Exception {
-        return StreamSupport.stream(seenTuples.keys().spliterator(), false).count();
     }
 
     @Override
     public void processElement(StreamElement element, Context ctx, Collector<String> out) throws Exception {
+
         if (element.isPunctuation()) {
-            HourlyPunctuation punc = (HourlyPunctuation) element;
-            punctuationsReceived++;
+            Punctuation punc = (Punctuation) element;
+            String field = punc.getField();
+            Object puncVal = punc.getValue();
 
-            long beforeSize = getStateSize();
-            System.out.println("PUNCTUATED-UNION [" + ctx.getCurrentKey() + "]: Received punctuation for hour " +
-                    punc.getHour() + " (punctuation #" + punctuationsReceived + ")");
+            System.out.println(">>> PUNCTUATED-UNION [" + ctx.getCurrentKey() + "]: Received Punctuation on '" + field + "' with value " + puncVal);
 
-            // --- KEEP INVARIANT: Purge state for completed hour ---
-            // The punctuation asserts "no more data for (sid, hour) will arrive"
-            // Therefore, we can safely remove all tuples matching this (sid, hour)
-            List<SensorReading> toRemove = new ArrayList<>();
+            Iterator<Map.Entry<Object, StreamElement>> iterator = seenElements.iterator();
+            int deletedCount = 0;
 
-            for (SensorReading reading : seenTuples.keys()) {
-                if (reading.getSid().equals(punc.getSid()) && reading.getHour() == punc.getHour()) {
-                    toRemove.add(reading);
+            while (iterator.hasNext()) {
+                Map.Entry<Object, StreamElement> entry = iterator.next();
+                StreamElement storedElement = entry.getValue();
+
+                Object storedVal = storedElement.getValue(field);
+
+                if (storedVal == null) {
+                    continue; // Field not present in this element
+                }
+                boolean shouldRemove = false;
+
+                // Comparison Logic
+                if (puncVal instanceof Integer && storedVal instanceof Integer) {
+                    // For Integers (like hours), assume ordered property (<=)
+                    if ((Integer) storedVal <= (Integer) puncVal) {
+                        shouldRemove = true;
+                    }
+                } else {
+                    // For others (Ids, Strings), assume exact match
+                    if (storedVal.equals(puncVal)) {
+                        shouldRemove = true;
+                    }
+                }
+
+                if (shouldRemove) {
+                    iterator.remove();
+                    deletedCount++;
                 }
             }
 
-            for (SensorReading reading : toRemove) {
-                seenTuples.remove(reading);
+            long remainingSize = StreamSupport.stream(seenElements.keys().spliterator(), false).count();
+            System.out.println("PUNCTUATED-UNION: Purged " + deletedCount + " elements in partition " + ctx.getCurrentKey() + ". New State Size = " + remainingSize);
+
+            out.collect("PUNCTUATED-UNION: Cleared " + field + "=" + puncVal + " (Removed " + deletedCount + ")");
+
+        } else {
+            // --- DATA LOGIC ---
+            Object key = element.getDeduplicationKey();
+
+            if (!seenElements.contains(key)) {
+                seenElements.put(key, element);
             }
-
-            long afterSize = getStateSize();
-            int removedCount = (int)(beforeSize - afterSize);
-
-            System.out.println("PUNCTUATED-UNION [" + ctx.getCurrentKey() + "]: Purged " + removedCount +
-                    " tuples. State size now = " + afterSize);
-
-            // --- PASS INVARIANT: Output summary result ---
-            out.collect("PUNCTUATED-UNION: Completed hour " + punc.getHour() +
-                    " for sensor " + punc.getSid() +
-                    ". Processed " + removedCount + " unique readings. State size: " + afterSize);
-
-            return;
-        }
-
-        // It's a data tuple
-        SensorReading reading = (SensorReading) element;
-        tupleCount++;
-        tuplesProcessed.inc();
-
-        // Duplicate elimination: only keep if not seen before
-        if (!seenTuples.contains(reading)) {
-            seenTuples.put(reading, true);
-
-            // Output the unique reading
-            out.collect("PUNCTUATED-UNION: " + reading);
-        }
-
-        // Periodic state size reporting (every 100 tuples)
-        if (tupleCount % 100 == 0) {
-            long currentStateSize = getStateSize();
-            System.out.println("PUNCTUATED-UNION [" + ctx.getCurrentKey() + "]: State size = " + currentStateSize +
-                    ", Total tuples = " + tupleCount + ", Punctuations = " + punctuationsReceived);
         }
     }
 }

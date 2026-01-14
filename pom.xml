@@ -45,6 +45,12 @@
             <artifactId>flink-connector-datagen</artifactId>
             <version>1.19.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-files</artifactId>
+            <version>1.19.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -58,9 +64,13 @@
                     <arguments>
                         <argument>--add-opens=java.base/java.util=ALL-UNNAMED</argument>
                         <argument>--add-opens=java.base/java.lang=ALL-UNNAMED</argument>
+                        <argument>--add-opens=java.base/java.time=ALL-UNNAMED</argument>
+                        <argument>--add-opens=java.base/java.nio=ALL-UNNAMED</argument>
+                        <argument>--add-opens=java.base/sun.nio.ch=ALL-UNNAMED</argument>
+                        <argument>--add-opens=java.base/java.io=ALL-UNNAMED</argument>
                         <argument>-classpath</argument>
                         <classpath/>
-                        <argument>org.example.Main</argument>
+                        <argument>org.example.MainTemp</argument>
                     </arguments>
                 </configuration>
             </plugin>
