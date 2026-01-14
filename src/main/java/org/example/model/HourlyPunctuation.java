@@ -1,13 +1,12 @@
 package org.example.model;
 
 import java.io.Serial;
-import java.io.Serializable;
 
 /**
  * Hourly punctuation following Tucker et al. 2003.
  * Semantics: "No more data for this sensor for this hour will arrive."
  */
-public class HourlyPunctuation implements StreamElement, Serializable {
+public class HourlyPunctuation implements StreamElement {
     @Serial
     private static final long serialVersionUID = 1L;
 

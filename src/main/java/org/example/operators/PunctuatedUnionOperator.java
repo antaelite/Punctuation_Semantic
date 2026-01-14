@@ -1,30 +1,28 @@
 
 package org.example.operators;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.StreamSupport;
+
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.Counter;
-import org.apache.flink.metrics.Gauge;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.example.model.HourlyPunctuation;
 import org.example.model.SensorReading;
 import org.example.model.StreamElement;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Punctuated Union Operator (Duplicate Elimination) following Tucker et al. 2003.
- *
  * WITH Punctuation optimization implementing KEEP and PASS invariants:
  * - KEEP Invariant: When punctuation arrives for hour X, purge all state for hour X
  * - PASS Invariant: Output results when punctuation arrives
  * - This prevents unbounded state growth (sawtooth pattern in Figure 2a)
  */
-public class PunctuatedUnionOperator extends KeyedProcessFunction<String, StreamElement, String> implements Serializable {
+public class PunctuatedUnionOperator extends KeyedProcessFunction<String, StreamElement, String> {
 
     private MapState<SensorReading, Boolean> seenTuples;
     private long tupleCount = 0;
@@ -32,10 +30,10 @@ public class PunctuatedUnionOperator extends KeyedProcessFunction<String, Stream
 
     // Metrics for monitoring
     private Counter tuplesProcessed;
-    private transient Gauge<Long> stateSizeGauge;
+
 
     @Override
-    public void open(Configuration parameters) throws Exception {
+    public void open(Configuration parameters) {
         seenTuples = getRuntimeContext().getMapState(
                 new MapStateDescriptor<>("seen-tuples-punctuated", SensorReading.class, Boolean.class)
         );
@@ -45,7 +43,7 @@ public class PunctuatedUnionOperator extends KeyedProcessFunction<String, Stream
                 .getMetricGroup()
                 .counter("tuples_processed");
 
-        stateSizeGauge = getRuntimeContext()
+        getRuntimeContext()
                 .getMetricGroup()
                 .gauge("state_size", () -> {
                     try {
@@ -57,11 +55,7 @@ public class PunctuatedUnionOperator extends KeyedProcessFunction<String, Stream
     }
 
     private long getStateSize() throws Exception {
-        long count = 0;
-        for (SensorReading ignored : seenTuples.keys()) {
-            count++;
-        }
-        return count;
+        return StreamSupport.stream(seenTuples.keys().spliterator(), false).count();
     }
 
     @Override

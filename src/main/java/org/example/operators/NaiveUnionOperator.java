@@ -1,6 +1,9 @@
 
 package org.example.operators;
 
+
+import java.util.stream.StreamSupport;
+
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
@@ -8,8 +11,6 @@ import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.example.model.SensorReading;
 import org.example.model.StreamElement;
-
-import java.io.Serializable;
 
 /**
  * Naive Union Operator (Duplicate Elimination) following Tucker et al. 2003 Section 7.2.1.
@@ -20,7 +21,7 @@ import java.io.Serializable;
  * - This leads to unbounded state growth (memory leak)
  * - Simulates the "problematic" baseline approach
  */
-public class NaiveUnionOperator extends KeyedProcessFunction<String, StreamElement, String> implements Serializable {
+public class NaiveUnionOperator extends KeyedProcessFunction<String, StreamElement, String> {
 
     // State: keeps all unique sensor readings (unbounded growth!)
     private MapState<SensorReading, Boolean> seenTuples;
@@ -37,11 +38,7 @@ public class NaiveUnionOperator extends KeyedProcessFunction<String, StreamEleme
     }
 
     private long getStateSize() throws Exception {
-        long count = 0;
-        for (SensorReading ignored : seenTuples.keys()) {
-            count++;
-        }
-        return count;
+        return StreamSupport.stream(seenTuples.keys().spliterator(), false).count();
     }
 
     @Override

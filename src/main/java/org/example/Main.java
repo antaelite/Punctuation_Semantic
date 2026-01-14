@@ -13,18 +13,14 @@ import org.example.operators.PunctuatedUnionOperator;
 import org.example.source.TemperatureGeneratorFunction;
 
 /**
- * Main job replicating Tucker et al. 2003 "Exploiting Punctuation Semantics in Continuous Data Streams"
- * Demonstrates:
- * 1. Temperature warehouse scenario (Section 7.2.1)
- * 2. Union operator with duplicate elimination
- * 3. Comparison between naive (unbounded state) and punctuated (bounded state) approaches
- * 4. Replication of Figure 2(a): State Size for Union Operator
+ * Main job replicating Tucker et al. 2003 "Exploiting Punctuation Semantics in Continuous Data Streams".
+ * Compares naive (unbounded state) and punctuated (bounded state) approaches.
  * Expected behavior:
  * - NAIVE: Linear growth of state (memory leak)
  * - PUNCTUATED: Sawtooth pattern with state purged at the end of each hour
  */
 public class Main {
-    public static void main(String[] args) throws Exception {
+    static void main() throws Exception {
         // Configuration matching Tucker et al. 2003 Section 7.3
         final String[] SENSOR_IDS = {"S1", "S2", "S3"}; // Multiple sensors
         final int DURATION_HOURS = 5;  // Simulate 5 hours (paper uses 60, but we use 5 for demo)
@@ -45,7 +41,7 @@ public class Main {
         // Create TWO separate sources (one for each operator)
         // Create DataGeneratorSource for Stream 1
         TemperatureGeneratorFunction generator1 = new TemperatureGeneratorFunction(SENSOR_IDS, DURATION_HOURS, READINGS_PER_MINUTE);
-        DataGeneratorSource<StreamElement> source1 = new DataGeneratorSource<StreamElement>(
+        DataGeneratorSource<StreamElement> source1 = new DataGeneratorSource<>(
                 generator1,
                 1000L,
                 TypeInformation.of(StreamElement.class)
@@ -60,7 +56,7 @@ public class Main {
         // Create DataGeneratorSource for Stream 2
         // Note: We need a fresh generator instance if it holds state or random seeds, though here it's stateless-ish.
         TemperatureGeneratorFunction generator2 = new TemperatureGeneratorFunction(SENSOR_IDS, DURATION_HOURS, READINGS_PER_MINUTE);
-        DataGeneratorSource<StreamElement> source2 = new DataGeneratorSource<StreamElement>(
+        DataGeneratorSource<StreamElement> source2 = new DataGeneratorSource<>(
                 generator2,
                 1000L,
                 TypeInformation.of(StreamElement.class)
