@@ -9,7 +9,7 @@ public interface StreamElement extends Serializable {
 
     boolean isPunctuation();
 
-    long getTimestamp();
+    long timestamp();
 
     String getKey(); // For MVP, we assume a String keys everything
 

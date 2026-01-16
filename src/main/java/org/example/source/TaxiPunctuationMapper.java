@@ -13,7 +13,7 @@ import org.example.model.TaxiRide;
 public class TaxiPunctuationMapper implements FlatMapFunction<String, StreamElement> {
 
     @Override
-    public void flatMap(String line, Collector<StreamElement> out) throws Exception {
+    public void flatMap(String line, Collector<StreamElement> out) {
         try {
             // Check for Punctuation in first column (medallion)
             String[] tokens = line.split(",");

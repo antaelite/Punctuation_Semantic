@@ -9,8 +9,8 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>25</maven.compiler.source>
-        <maven.compiler.target>25</maven.compiler.target>
+        <maven.compiler.source>23</maven.compiler.source>
+        <maven.compiler.target>23</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <flink.version>1.18.0</flink.version>
 
@@ -70,7 +70,7 @@
                         <argument>--add-opens=java.base/java.io=ALL-UNNAMED</argument>
                         <argument>-classpath</argument>
                         <classpath/>
-                        <argument>org.example.MainTemp</argument>
+                        <argument>org.example.app.MainTaxi</argument>
                     </arguments>
                 </configuration>
             </plugin>
