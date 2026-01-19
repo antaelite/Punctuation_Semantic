@@ -1,26 +1,21 @@
 package org.example.operators;
 
+import java.io.Serial;
+
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.example.model.Punctuation;
 import org.example.model.StreamElement;
 import org.example.model.TaxiRide;
-
-import java.io.Serial;
+import org.example.punctuation.PunctuationAwareOperator;
 
 /**
  * Calculates wait time between consecutive fares for the same taxi.
- *
- * <p>
- * Implements Tucker et al. (2003) punctuation semantics to answer the query:
- * "What is the average time it takes for a taxi to find its next fare per
- * destination borough?"
  *
  * <p>
  * <b>Input:</b> Stream of {@link TaxiRide} and {@link Punctuation} objects,
@@ -36,11 +31,9 @@ import java.io.Serial;
  * cleanup</li>
  * <li>Bounded memory: Old taxi state is purged when punctuation arrives</li>
  * </ul>
- *
- * @see <a href="https://doi.org/10.1145/776752.776780">Tucker et al. 2003</a>
  */
 public class WaitTimeBetweenFaresOperator
-        extends KeyedProcessFunction<String, StreamElement, Tuple3<String, Long, Integer>> {
+        extends PunctuationAwareOperator<String, StreamElement, Tuple3<String, Long, Integer>> {
 
     private transient ValueState<DropOffInfo> lastDropOff;
 
@@ -54,19 +47,10 @@ public class WaitTimeBetweenFaresOperator
     }
 
     @Override
-    public void processElement(StreamElement element, Context ctx, Collector<Tuple3<String, Long, Integer>> out)
+    protected void processData(StreamElement element, Context ctx, Collector<Tuple3<String, Long, Integer>> out)
             throws Exception {
 
-        if (element.isPunctuation()) {
-            handlePunctuation((Punctuation) element, ctx);
-        } else {
-            handleTaxiRide((TaxiRide) element, ctx, out);
-        }
-    }
-
-    private void handleTaxiRide(TaxiRide ride, Context ctx, Collector<Tuple3<String, Long, Integer>> out)
-            throws Exception {
-
+        TaxiRide ride = (TaxiRide) element;
         DropOffInfo previous = lastDropOff.value();
 
         if (previous != null) {
@@ -89,7 +73,10 @@ public class WaitTimeBetweenFaresOperator
         lastDropOff.update(currentDropOff);
     }
 
-    private void handlePunctuation(Punctuation punctuation, Context ctx) throws Exception {
+    @Override
+    protected void onPunctuation(Punctuation punctuation, Context ctx, Collector<Tuple3<String, Long, Integer>> out)
+            throws Exception {
+
         String field = punctuation.field();
 
         if ("medallion".equals(field)) {

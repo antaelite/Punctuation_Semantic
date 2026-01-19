@@ -3,6 +3,8 @@ package org.example.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.apache.commons.lang3.math.NumberUtils;
+
 /**
  * NYC Taxi ride data model with full pickup and drop-off information. Supports
  * the Tucker et al. 2003 wait-time-between-fares query.
@@ -32,16 +34,8 @@ public class TaxiRide implements StreamElement {
         this.dropoffTime = LocalDateTime.parse(tokens[6], formatter);
 
         // Parse coordinates (maybe 0.0 for missing data)
-        this.dropoffLongitude = parseDouble(tokens[12]);
-        this.dropoffLatitude = parseDouble(tokens[13]);
-    }
-
-    private double parseDouble(String value) {
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
+        this.dropoffLongitude = NumberUtils.toDouble(tokens[12], 0.0);
+        this.dropoffLatitude = NumberUtils.toDouble(tokens[13], 0.0);
     }
 
     // StreamElement implementation
@@ -52,7 +46,7 @@ public class TaxiRide implements StreamElement {
 
     @Override
     public long timestamp() {
-        return java.sql.Timestamp.valueOf(pickupTime).getTime();
+        return getDropoffTimestamp(); // Event time = when taxi reports data (dropoff)
     }
 
     @Override
@@ -63,7 +57,7 @@ public class TaxiRide implements StreamElement {
     @Override
     public Object getValue(String field) {
         return switch (field) {
-            case "hour" ->
+            case "pickup_hour" ->
                 pickupTime.getHour();
             case "medallion" ->
                 medallion;
@@ -72,11 +66,6 @@ public class TaxiRide implements StreamElement {
             default ->
                 null;
         };
-    }
-
-    @Override
-    public Object getDeduplicationKey() {
-        return medallion + "_" + pickupTime.toString();
     }
 
     public long getPickupTimestamp() {

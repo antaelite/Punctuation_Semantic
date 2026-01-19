@@ -9,9 +9,12 @@ import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.example.model.StreamElement;
+import org.example.model.TaxiRide;
 import org.example.operators.AverageAggregationOperator;
+import org.example.operators.TaxiCsvMapper;
 import org.example.operators.WaitTimeBetweenFaresOperator;
-import org.example.source.TaxiPunctuationMapper;
+import org.example.punctuation.PunctuationBuffer;
+import org.example.punctuation.PunctuationInjector;
 
 /**
  * Tucker et al. (2003) Replication: Wait Time Between Fares Query
@@ -23,8 +26,9 @@ import org.example.source.TaxiPunctuationMapper;
  * <p>
  * <b>Tucker Semantics Applied:</b>
  * <ul>
- * <li>Data sorted by (medallion, pickup_time)</li>
- * <li>Punctuations mark medallion boundaries ("no more rides from taxi X")</li>
+ * <li>Data sorted by (medallion, dropoff_time) - when data is reported</li>
+ * <li>Punctuations mark medallion boundaries ("no more rides from taxi X") -
+ * injected by operators</li>
  * <li>Bounded state: old taxi data purged when punctuation arrives</li>
  * </ul>
  *
@@ -39,7 +43,7 @@ import org.example.source.TaxiPunctuationMapper;
 public class MainTaxi {
 
     public static void main(String[] args) throws Exception {
-        // CSV file MUST be sorted by (medallion, pickup_datetime) for query to work correctly
+        // CSV file MUST be sorted by (medallion, dropoff_datetime) for event-time ordering
         String CSV_FILE_PATH = "./src/main/resources/nyc_taxi_medallion_sorted.csv";
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -56,18 +60,32 @@ public class MainTaxi {
                 new Path(CSV_FILE_PATH))
                 .build();
 
-        // Parse CSV into TaxiRide and Punctuation objects
-        DataStream<StreamElement> stream = env.fromSource(
+        // Parse CSV into TaxiRide objects
+        DataStream<StreamElement> csvStream = env.fromSource(
                 fileSource,
                 WatermarkStrategy.noWatermarks(),
                 "Taxi CSV Source")
-                .flatMap(new TaxiPunctuationMapper())
+                .flatMap(new TaxiCsvMapper())
                 .name("Parse CSV");
 
+        // Inject punctuation when medallion changes (Tucker: "no more rides from this taxi")
+        DataStream<StreamElement> withPunctuation = csvStream
+                .keyBy(StreamElement::getKey)
+                .process(new PunctuationInjector<>("medallion"))
+                .name("Inject Punctuation");
+
+        // Buffer data and emit on punctuation (Tucker: bounded memory)
+        DataStream<TaxiRide> stream = withPunctuation
+                .keyBy(StreamElement::getKey)
+                .process(new PunctuationBuffer())
+                .returns(TaxiRide.class) // Explicit type for Flink type inference
+                .name("Punctuation Buffer");
+
         // Step 1: Calculate wait times per taxi (keyed by medallion)
-        // Key by medallion (taxi ID) to track same taxi's consecutive trips
-        // TaxiRide.getKey() returns medallion
+        // Note: stream is already TaxiRide (buffer filtered out punctuation)
+        // We need to wrap it back into StreamElement for the operator
         DataStream<Tuple3<String, Long, Integer>> waitTimes = stream
+                .map(ride -> (StreamElement) ride)
                 .keyBy(StreamElement::getKey)
                 .process(new WaitTimeBetweenFaresOperator())
                 .name("Calculate Wait Times");

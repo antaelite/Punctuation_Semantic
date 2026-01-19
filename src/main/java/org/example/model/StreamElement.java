@@ -14,6 +14,4 @@ public interface StreamElement extends Serializable {
     String getKey(); // For MVP, we assume a String keys everything
 
     Object getValue(String field);
-
-    Object getDeduplicationKey();
 }
