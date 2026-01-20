@@ -1,23 +1,22 @@
 package org.example.app;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.connector.file.src.FileSource;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.example.model.StreamElement;
-import org.example.model.TaxiRide;
-import org.example.operators.AverageAggregationOperator;
+import org.example.model.WaitTimeData;
+import org.example.operators.StreamThrottler;
 import org.example.operators.TaxiCsvMapper;
-import org.example.operators.WaitTimeBetweenFaresOperator;
-import org.example.punctuation.PunctuationBuffer;
-import org.example.punctuation.PunctuationInjector;
+import org.example.operators.stateful.GroupByOperator;
+import org.example.operators.stateful.TaxiWaitTimeOperator;
+import org.example.punctuated.PunctuatedBatchOperator;
+import org.example.punctuated.PunctuationInjector;
 
 /**
- * Tucker et al. (2003) Replication: Wait Time Between Fares Query
+ * Tucker et al. (2003) Faithful Implementation: Wait Time Between Fares Query
  *
  * <p>
  * <b>Query:</b> What is the average time it takes for a taxi to find its next
@@ -43,8 +42,10 @@ import org.example.punctuation.PunctuationInjector;
 public class MainTaxi {
 
     public static void main(String[] args) throws Exception {
+        System.err.println("\n***** MAIN TAXI STARTING *****\n");
+
         // CSV file MUST be sorted by (medallion, dropoff_datetime) for event-time ordering
-        String CSV_FILE_PATH = "./src/main/resources/nyc_taxi_medallion_sorted.csv";
+        String CSV_FILE_PATH = ".\\src\\main\\resources\\nyc_taxi_medallion_sorted.csv";
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1); // Single thread to respect CSV ordering
@@ -66,38 +67,45 @@ public class MainTaxi {
                 WatermarkStrategy.noWatermarks(),
                 "Taxi CSV Source")
                 .flatMap(new TaxiCsvMapper())
-                .name("Parse CSV");
+                .name("Parse CSV")
+                .process(new StreamThrottler<>(0)) // 10ms delay = 100 records/sec
+                .name("Stream Throttler");
 
         // Inject punctuation when medallion changes (Tucker: "no more rides from this taxi")
+        // NOTE: Must be BEFORE keyBy so injector sees medallion transitions globally!
         DataStream<StreamElement> withPunctuation = csvStream
-                .keyBy(StreamElement::getKey)
+                .keyBy(new GlobalKeySelector())
                 .process(new PunctuationInjector<>("medallion"))
                 .name("Inject Punctuation");
 
-        // Buffer data and emit on punctuation (Tucker: bounded memory)
-        DataStream<TaxiRide> stream = withPunctuation
+        // Punctuated batch operator (Tucker Section 4.2: PASS Invariant - bounded memory)
+        // NOW we keyBy medallion to partition data for parallel processing
+        DataStream<StreamElement> bufferedStream = withPunctuation
                 .keyBy(StreamElement::getKey)
-                .process(new PunctuationBuffer())
-                .returns(TaxiRide.class) // Explicit type for Flink type inference
-                .name("Punctuation Buffer");
+                .process(new PunctuatedBatchOperator())
+                .name("Punctuated Batch Operator");
 
-        // Step 1: Calculate wait times per taxi (keyed by medallion)
-        // Note: stream is already TaxiRide (buffer filtered out punctuation)
-        // We need to wrap it back into StreamElement for the operator
-        DataStream<Tuple3<String, Long, Integer>> waitTimes = stream
-                .map(ride -> (StreamElement) ride)
+        // Taxi wait time operator (Tucker Section 7: Stateful computation)
+        // Tucker: Operators process both data and punctuation, cleaning state on punctuation
+        DataStream<StreamElement> waitTimes = bufferedStream
                 .keyBy(StreamElement::getKey)
-                .process(new WaitTimeBetweenFaresOperator())
-                .name("Calculate Wait Times");
+                .process(new TaxiWaitTimeOperator())
+                .name("Taxi Wait Time Operator");
 
-        // Step 2: Aggregate by borough to get averages
-        DataStream<Tuple2<String, Double>> avgByBorough = waitTimes
-                .keyBy(tuple -> tuple.f0) // Group by borough
-                .process(new AverageAggregationOperator())
-                .name("Aggregate by Borough");
+        // GroupBy operator (Tucker Section 7.2: Aggregation with bounded memory)
+        // Tucker: Final operator also implements KEEP/PASS/Propagation invariants
+        DataStream<StreamElement> results = waitTimes
+                .keyBy(element -> {
+                    if (element instanceof WaitTimeData) {
+                        return ((WaitTimeData) element).borough();
+                    }
+                    return "PUNCTUATION"; // Group all punctuation together
+                })
+                .process(new GroupByOperator())
+                .name("GroupBy Operator");
 
-        // Print results
-        avgByBorough.print().name("Results");
+        // Print results (will show both data and punctuation flow)
+        results.print().name("Results");
 
         // Execute
         System.out.println("Starting Tucker Replication Job...\n");

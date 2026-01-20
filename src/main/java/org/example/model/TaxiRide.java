@@ -1,5 +1,6 @@
 package org.example.model;
 
+import java.io.Serial;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -8,17 +9,24 @@ import org.apache.commons.lang3.math.NumberUtils;
 /**
  * NYC Taxi ride data model with full pickup and drop-off information. Supports
  * the Tucker et al. 2003 wait-time-between-fares query.
+ *
+ * <p>
+ * <b>Serialization:</b> Uses primitive types (long timestamps) for Flink/Kryo
+ * compatibility.
  */
 public class TaxiRide implements StreamElement {
 
-    // CSV fields
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    // CSV fields (using timestamps for serialization compatibility)
     private final String medallion;           // Taxi ID (column 0)
-    private final LocalDateTime pickupTime;   // Column 5
-    private final LocalDateTime dropoffTime;  // Column 6
+    private final long pickupTimestamp;       // Column 5 (as epoch millis)
+    private final long dropoffTimestamp;      // Column 6 (as epoch millis)
     private final double dropoffLongitude;    // Column 13
     private final double dropoffLatitude;     // Column 14
 
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final transient DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * Parse CSV line into TaxiRide object. CSV format:
@@ -30,8 +38,10 @@ public class TaxiRide implements StreamElement {
         String[] tokens = csvLine.split(",");
 
         this.medallion = tokens[0];
-        this.pickupTime = LocalDateTime.parse(tokens[5], formatter);
-        this.dropoffTime = LocalDateTime.parse(tokens[6], formatter);
+        LocalDateTime pickupTime = LocalDateTime.parse(tokens[5], formatter);
+        LocalDateTime dropoffTime = LocalDateTime.parse(tokens[6], formatter);
+        this.pickupTimestamp = java.sql.Timestamp.valueOf(pickupTime).getTime();
+        this.dropoffTimestamp = java.sql.Timestamp.valueOf(dropoffTime).getTime();
 
         // Parse coordinates (maybe 0.0 for missing data)
         this.dropoffLongitude = NumberUtils.toDouble(tokens[12], 0.0);
@@ -58,22 +68,28 @@ public class TaxiRide implements StreamElement {
     public Object getValue(String field) {
         return switch (field) {
             case "pickup_hour" ->
-                pickupTime.getHour();
+                LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(pickupTimestamp),
+                java.time.ZoneId.systemDefault()
+                ).getHour();
             case "medallion" ->
                 medallion;
             case "dropoff_hour" ->
-                dropoffTime.getHour();
+                LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(dropoffTimestamp),
+                java.time.ZoneId.systemDefault()
+                ).getHour();
             default ->
                 null;
         };
     }
 
     public long getPickupTimestamp() {
-        return java.sql.Timestamp.valueOf(pickupTime).getTime();
+        return pickupTimestamp;
     }
 
     public long getDropoffTimestamp() {
-        return java.sql.Timestamp.valueOf(dropoffTime).getTime();
+        return dropoffTimestamp;
     }
 
     /**
@@ -121,9 +137,17 @@ public class TaxiRide implements StreamElement {
 
     @Override
     public String toString() {
+        LocalDateTime pickup = LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(pickupTimestamp),
+                java.time.ZoneId.systemDefault()
+        );
+        LocalDateTime dropoff = LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(dropoffTimestamp),
+                java.time.ZoneId.systemDefault()
+        );
         return "TaxiRide{medallion=" + medallion
-                + ", pickup=" + pickupTime
-                + ", dropoff=" + dropoffTime
+                + ", pickup=" + pickup
+                + ", dropoff=" + dropoff
                 + ", borough=" + getDropoffBorough() + "}";
     }
 }

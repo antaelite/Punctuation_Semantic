@@ -12,6 +12,8 @@ import org.example.model.TaxiRide;
  */
 public class TaxiCsvMapper implements FlatMapFunction<String, StreamElement> {
 
+    private int count = 0;
+
     @Override
     public void flatMap(String line, Collector<StreamElement> out) {
         try {
@@ -19,8 +21,18 @@ public class TaxiCsvMapper implements FlatMapFunction<String, StreamElement> {
             TaxiRide currentRide = new TaxiRide(line);
             out.collect(currentRide);
 
+            count++;
+            if (count % 1000 == 0) {
+                System.out.println(">>> PARSED: " + count + " rides so far");
+            }
+
         } catch (Exception e) {
-            // Ignore headers or malformed lines
+            // Ignore headers or malformed lines - but log first few for debugging
+            if (count < 3) {
+                System.out.println(">>> CSV-PARSER ERROR: " + e.getClass().getSimpleName()
+                        + ": " + e.getMessage());
+                System.out.println(">>> Failed line: " + line.substring(0, Math.min(100, line.length())));
+            }
         }
     }
 }

@@ -11,7 +11,7 @@ public interface StreamElement extends Serializable {
 
     long timestamp();
 
-    String getKey(); // For MVP, we assume a String keys everything
+    String getKey();
 
     Object getValue(String field);
 }
