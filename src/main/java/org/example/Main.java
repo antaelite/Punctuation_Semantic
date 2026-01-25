@@ -1,17 +1,38 @@
 package org.example;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-public class Main {
-    public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.print("Hello and welcome!");
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.connector.file.src.FileSource;
+import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
+import org.apache.flink.core.fs.Path;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.example.framework.PunctuationGenerator;
+import org.example.model.StreamItem;
+import org.example.operators.StreamDuplicateElimination;
+import org.example.source.TaxiDataSource;
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
-        }
+public class Main {
+
+    public static void main(String[] args) throws Exception {
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        String filePath = "src/main/resources/sample.csv";
+        FileSource<String> source = FileSource.forRecordStreamFormat(
+                new TextLineInputFormat(),
+                new Path(filePath)
+        ).build();
+        DataStream<String> lines = env.fromSource(
+                source,
+                WatermarkStrategy.noWatermarks(),
+                "text-file-source"
+        );
+        DataStream<StreamItem> stream = lines
+                .map(new TaxiDataSource())
+                .flatMap(new PunctuationGenerator());
+        DataStream<StreamItem> processedStream = stream
+                .keyBy(item -> "global")
+                .process(new StreamDuplicateElimination());
+//        processedStream.print();
+        env.execute("replication");
     }
 }
