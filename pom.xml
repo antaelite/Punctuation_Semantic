@@ -35,6 +35,11 @@
             <version>1.18.36</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.36</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -51,6 +56,16 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
+                <configuration>
+                    <cleanupDaemonThreads>false</cleanupDaemonThreads>
+                    <keepAlive>false</keepAlive>
+                    <classpathScope>compile</classpathScope>
+                    <arguments>
+                        <argument>--add-opens=java.base/java.lang=ALL-UNNAMED</argument>
+                        <argument>--add-opens=java.base/java.util=ALL-UNNAMED</argument>
+                        <argument>--add-opens=java.base/java.io=ALL-UNNAMED</argument>
+                    </arguments>
+                </configuration>
                 <executions>
                     <execution>
                         <id>main</id>
@@ -59,9 +74,9 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>test-taxi</id>
+                        <id>test</id>
                         <configuration>
-                            <mainClass>org.example.test.TaxiDataTest</mainClass>
+                            <mainClass>org.example.tests.ReadingCsv</mainClass>
                         </configuration>
                     </execution>
                 </executions>
