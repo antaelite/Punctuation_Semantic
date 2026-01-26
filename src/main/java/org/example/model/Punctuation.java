@@ -15,16 +15,13 @@ import java.util.Objects;
 @EqualsAndHashCode(callSuper = false)
 public class Punctuation extends StreamItem {
 
-    private final String medallion;
+
     private final long startTimestamp;
     private final long endTimestamp;
 
-    public Punctuation(String medallion) {
-        this(medallion, -1, -1);
-    }
 
-    public Punctuation(String medallion, long start, long end) {
-        this.medallion = medallion;
+
+    public Punctuation(long start, long end) {
         this.startTimestamp = start;
         this.endTimestamp = end;
     }
@@ -35,23 +32,14 @@ public class Punctuation extends StreamItem {
     }
 
     public boolean match(TaxiRide ride) {
-        if (ride == null || !Objects.equals(this.medallion, ride.medallion)) {
-            return false;
-        }
+        if (ride == null) return false;
 
-        if (this.startTimestamp != -1 && this.endTimestamp != -1) {
-            long rideTime = ride.getPickupTimestamp();
-            return rideTime >= this.startTimestamp && rideTime <= this.endTimestamp;
-        }
-        return true;
+        long rideTime = ride.getDropoffTimestamp();
+        return rideTime >= this.startTimestamp && rideTime <= this.endTimestamp;
     }
-
     @Override
     public String toString() {
-        if (startTimestamp == -1 || endTimestamp == -1) {
-            return "Punctuation{medallion=" + medallion + ", type=WILDCARD}";
-        }
-        return "Punctuation{medallion=" + medallion
+        return "Punctuation{Time:"
                 + ", start=" + Instant.ofEpochMilli(startTimestamp)
                 + ", end=" + Instant.ofEpochMilli(endTimestamp) + "}";
     }

@@ -27,6 +27,11 @@ public class TaxiRide extends StreamItem {
                 .toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
     }
 
+    public long getDropoffTimestamp() {
+        return LocalDateTime.parse(dropoffDatetime, formatter)
+                .toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
+    }
+
     @Override
     public boolean isPunctuation() {
         return false;

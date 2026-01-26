@@ -7,11 +7,9 @@ import org.example.model.Punctuation;
 import org.example.model.TaxiRide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.time.Instant;
 
 public class PunctuationInjector implements FlatMapFunction<TaxiRide, StreamItem> {
 
-    private transient String lastMedallion = null; // Maybe use Flink State to store these values
     private transient Long lastWindowStart = null;
     private static final long WINDOW_SIZE = 21600000L; // 6 heures en ms
     private static final Logger LOG = LoggerFactory.getLogger(PunctuationInjector.class);
@@ -21,26 +19,27 @@ public class PunctuationInjector implements FlatMapFunction<TaxiRide, StreamItem
         if (ride == null) {
             return;
         }
-        long currentWindowStart = (ride.getPickupTimestamp() / WINDOW_SIZE) * WINDOW_SIZE;
 
-        // 1. CHANGEMENT DE TAXI
-        if (lastMedallion != null && !lastMedallion.equals(ride.medallion)) {
-//            LOG.warn("Taxi change: {} -> {}", lastMedallion, ride.medallion);
-            out.collect(new Punctuation(lastMedallion));
+        // --- CHANGEMENT ICI : On utilise Dropoff (Arrivée) ---
+        long eventTime = ride.getDropoffTimestamp();
 
-            lastWindowStart = null;  // Reset for new taxi
-        } // 2. CHANGEMENT DE FENÊTRE (00h->06h, etc.)
-        else if (lastWindowStart != null && currentWindowStart > lastWindowStart) {
+        // Calcul de la fenêtre basé sur l'arrivée
+        long currentWindowStart = (eventTime / WINDOW_SIZE) * WINDOW_SIZE;
+
+        // Détection du saut de fenêtre
+        if (lastWindowStart != null && currentWindowStart > lastWindowStart) {
             long endOfPeriod = currentWindowStart - 1;
 
-//            LOG.warn("Window change for {}: [{} -> {}]", ride.medallion, lastWindowStart, currentWindowStart);
-            out.collect(new Punctuation(ride.medallion, lastWindowStart, endOfPeriod));
+            // On émet la ponctuation pour fermer la fenêtre précédente
+            out.collect(new Punctuation(lastWindowStart, endOfPeriod));
+
+            // LOG.info("Fin de la fenêtre {} (basée sur drop-off)", lastWindowStart);
         }
 
-        // 3. Émission Donnée
+        // Émission de la donnée
         out.collect(ride);
 
-        lastMedallion = ride.medallion;
+        // Mise à jour de l'état
         lastWindowStart = currentWindowStart;
     }
 }
