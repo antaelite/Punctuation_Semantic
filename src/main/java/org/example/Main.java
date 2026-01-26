@@ -39,7 +39,13 @@ public class Main {
         // keyBy and 
         DataStream<StreamItem> processedStream = stream
                 .keyBy(item -> "global")
-                .process(new StreamDuplicateElimination());
+                // For streamDuplicate
+                //.process(new StreamDuplicateElimination());
+                // For Query 3
+                .process(new org.example.operators.Query3Intra());
+
+                // Pour la Query 4
+                // .process(new org.example.operators.Query4Inter());
 
         // print processed stream
         processedStream.print();

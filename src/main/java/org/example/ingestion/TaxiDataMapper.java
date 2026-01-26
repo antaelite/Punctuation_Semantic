@@ -11,7 +11,7 @@ public class TaxiDataMapper implements MapFunction<String, TaxiRide> {
             return null;
         }
         try {
-            return new TaxiRide(values[0], values[1], values[2], values[5], values[6], Double.parseDouble(values[9]));
+            return new TaxiRide(values[0], values[1], values[2], values[5], values[6], Double.parseDouble(values[9]), values[10], values[11], values[12], values[13]);
         } catch (Exception e) {
             return null;
         }
