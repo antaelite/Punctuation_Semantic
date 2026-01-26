@@ -1,9 +1,8 @@
-package org.example.framework;
+package org.example.core;
 
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 import org.example.model.Punctuation;
-import org.example.model.StreamItem;
 import org.example.model.TaxiRide;
 
 public abstract class PunctuatedIterator extends KeyedProcessFunction<String, StreamItem, StreamItem> {

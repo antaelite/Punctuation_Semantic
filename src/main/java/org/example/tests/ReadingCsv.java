@@ -22,7 +22,6 @@ public class ReadingCsv {
                 WatermarkStrategy.noWatermarks(),
                 "text-file-source"
         );
-        // print each line
         lines.print();
 
         try {

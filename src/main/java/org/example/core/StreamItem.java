@@ -1,8 +1,6 @@
-package org.example.model;
+package org.example.core;
 
 import java.io.Serializable;
-
-import lombok.Data;
 
 public abstract class StreamItem implements Serializable {
 

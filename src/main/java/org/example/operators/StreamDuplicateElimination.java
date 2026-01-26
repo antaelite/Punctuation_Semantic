@@ -5,15 +5,16 @@ import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 
 import org.apache.flink.util.Collector;
-import org.example.framework.PunctuatedIterator;
+import org.example.core.PunctuatedIterator;
 import org.example.model.Punctuation;
-import org.example.model.StreamItem;
+import org.example.core.StreamItem;
 import org.example.model.TaxiRide;
 
 import java.util.Iterator;
 import java.util.Map;
 
 public class StreamDuplicateElimination extends PunctuatedIterator {
+
     private MapState<String, TaxiRide> seenTuples;
 
     @Override
@@ -23,11 +24,12 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
     }
 
     @Override
-    public void step(TaxiRide tuple, Context context, Collector<StreamItem> out) throws Exception {
-        if (!seenTuples.contains(tuple.medallion)) {
-            seenTuples.put(tuple.medallion, tuple);
-            out.collect(tuple);
-//            System.out.println(tuple);
+    public void step(TaxiRide taxiRide, Context context, Collector<StreamItem> out) throws Exception {
+        // Use the hashCode of the entire TaxiRide object as the key for exact duplicate detection
+        String key = String.valueOf(taxiRide.hashCode());
+        if (!seenTuples.contains(key)) {
+            seenTuples.put(key, taxiRide);
+            out.collect(taxiRide);
         }
     }
 

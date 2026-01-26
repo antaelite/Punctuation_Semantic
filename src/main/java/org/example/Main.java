@@ -6,10 +6,10 @@ import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.example.framework.PunctuationGenerator;
-import org.example.model.StreamItem;
+import org.example.ingestion.PunctuationGenerator;
+import org.example.core.StreamItem;
 import org.example.operators.StreamDuplicateElimination;
-import org.example.source.TaxiDataSource;
+import org.example.ingestion.TaxiDataMapper;
 
 public class Main {
 
@@ -17,22 +17,39 @@ public class Main {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
         String filePath = "src/main/resources/sample.csv";
+
+        // reads file
         FileSource<String> source = FileSource.forRecordStreamFormat(
                 new TextLineInputFormat(),
                 new Path(filePath)
         ).build();
+
+        // creates a data stream from the file
         DataStream<String> lines = env.fromSource(
                 source,
                 WatermarkStrategy.noWatermarks(),
                 "text-file-source"
         );
+
+        // transforms the data stream into a stream of StreamItem objects
         DataStream<StreamItem> stream = lines
-                .map(new TaxiDataSource())
+                .map(new TaxiDataMapper())
                 .flatMap(new PunctuationGenerator());
+
+        // keyBy and 
         DataStream<StreamItem> processedStream = stream
                 .keyBy(item -> "global")
                 .process(new StreamDuplicateElimination());
-//        processedStream.print();
-        env.execute("replication");
+
+        // print processed stream
+        processedStream.print();
+
+        try {
+            env.execute("Replication");
+            System.exit(0);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 }
