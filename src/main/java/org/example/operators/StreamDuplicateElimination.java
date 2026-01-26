@@ -10,7 +10,8 @@ import org.example.model.Punctuation;
 import org.example.core.StreamItem;
 import org.example.model.TaxiRide;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class StreamDuplicateElimination extends PunctuatedIterator {
@@ -26,10 +27,12 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
     @Override
     public void step(TaxiRide taxiRide, Context context, Collector<StreamItem> out) throws Exception {
         // Use the hashCode of the entire TaxiRide object as the key for exact duplicate detection
-        String key = String.valueOf(taxiRide.hashCode());
+        String key = taxiRide.medallion + taxiRide.pickupDatetime;
         if (!seenTuples.contains(key)) {
             seenTuples.put(key, taxiRide);
             out.collect(taxiRide);
+        } else {
+            System.out.println("Dublicate: " + key);
         }
     }
 
@@ -41,19 +44,25 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
     @Override
     public void prop(Punctuation p, Context context, Collector<StreamItem> out) {
         // Simply propagates the punctuation as it arrives.
-            out.collect(p);
+        out.collect(p);
     }
 
     @Override
     public void keep(Punctuation p, Context context) throws Exception {
-        // Any tuples in state that we know can have no more duplicate values can be removed
-        Iterator<Map.Entry<String, TaxiRide>> iterator = seenTuples.iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, TaxiRide> entry = iterator.next();
-            TaxiRide ride = entry.getValue();
-            if (p.match(ride)) {
-                iterator.remove();
+        // Collect keys to remove
+        List<String> keysToRemove = new ArrayList<>();
+
+        for (Map.Entry<String, TaxiRide> entry : seenTuples.entries()) {
+            if (p.match(entry.getValue())) {
+                keysToRemove.add(entry.getKey());
             }
+        }
+
+        // Remove them
+        for (String key : keysToRemove) {
+            seenTuples.remove(key); // TODO: load into a database
+            System.out.println("Removed: " + key);
+
         }
     }
 }

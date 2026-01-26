@@ -3,21 +3,22 @@ package org.example.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import lombok.Data;
+import lombok.Value;
 import lombok.EqualsAndHashCode;
+
 import org.example.core.StreamItem;
 
-@Data
+@Value
 @EqualsAndHashCode(callSuper = false)
 public class TaxiRide extends StreamItem {
 
     // Fields matching the CSV
-    public final String medallion;
-    public final String hackLicense;
-    public final String vendorId;
-    public final String pickupDatetime; // Keeping as String for simplicity in parsing
-    public final String dropoffDatetime;
-    public final double tripDistance;
+    public String medallion;
+    public String hackLicense;
+    public String vendorId;
+    public String pickupDatetime; // Keeping as String for simplicity in parsing
+    public String dropoffDatetime;
+    public double tripDistance;
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

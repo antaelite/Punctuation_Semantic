@@ -12,7 +12,7 @@ public class ReadingCsv {
     public static void main(String[] args) {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        String filePath = "src/main/resources/sample.csv";
+        String filePath = "src/main/resources/sample_medaillon.csv";
         FileSource<String> source = FileSource.forRecordStreamFormat(
                 new TextLineInputFormat(),
                 new Path(filePath)
