@@ -9,6 +9,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.example.ingestion.PunctuationInjector;
 import org.example.core.StreamItem;
 import org.example.operators.StreamDuplicateElimination;
+import org.example.operators.StreamGroupBy;
 import org.example.ingestion.TaxiDataMapper;
 
 public class Main {
@@ -16,7 +17,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        String filePath = "src/main/resources/sample_medaillon.csv";
+        String filePath = "src/main/resources/sample_dropofftime.csv";
 
         // reads file
         FileSource<String> source = FileSource.forRecordStreamFormat(
@@ -39,7 +40,7 @@ public class Main {
         // keyBy and process stream
         DataStream<StreamItem> processedStream = stream
                 .keyBy(item -> "global") // forces Flink to send all StreamItems to the same partition
-                .process(new StreamDuplicateElimination());
+                .process(new StreamGroupBy());
 
         // print processed stream
         processedStream.print();

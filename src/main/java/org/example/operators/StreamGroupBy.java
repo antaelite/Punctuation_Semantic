@@ -5,31 +5,30 @@ import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 
-// Attention aux imports selon votre structure de dossiers
 import org.example.core.PunctuatedIterator;
 import org.example.core.StreamItem;
 import org.example.model.Punctuation;
 import org.example.model.TaxiRide;
 
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.Map;
 
 public class StreamGroupBy extends PunctuatedIterator {
 
-    // On stocke l'état : Médaillon -> Distance Totale
+    // Mémoire : Associe un Médaillon (String) à une Distance cumulée (Double)
     private MapState<String, Double> runningSums;
 
     @Override
     public void open(Configuration parameters) {
-        // Initialisation de la mémoire Flink
         runningSums = getRuntimeContext().getMapState(
                 new MapStateDescriptor<>("runningSums", String.class, Double.class)
         );
     }
 
     /**
-     * STEP : Accumulation (On ne sort rien ici !)
-     * On reçoit un trajet, on ajoute sa distance au total en mémoire.
+     * STEP : Accumulation
+     * On additionne les distances au fur et à mesure que les taxis arrivent.
      */
     @Override
     public void step(TaxiRide ride, Context context, Collector<StreamItem> out) throws Exception {
@@ -39,76 +38,57 @@ public class StreamGroupBy extends PunctuatedIterator {
             currentTotal = 0.0;
         }
 
-        // On met à jour la mémoire (State)
         runningSums.put(ride.medallion, currentTotal + ride.tripDistance);
-
-        // Notez qu'on ne fait PAS de out.collect() ici.
-        // On attend la fin de la période (la ponctuation).
     }
 
     /**
-     * PASS : Émission des résultats
-     * La ponctuation arrive : "La tranche 00h-06h est finie".
-     * On regarde ce qu'on a calculé et on l'envoie.
+     * PASS : Émission
+     * La ponctuation temporelle arrive. C'est le signal que la tranche de 6h est finie.
+     * On émet TOUT ce qu'on a accumulé en mémoire.
      */
     @Override
     public void pass(Punctuation p, Context context, Collector<StreamItem> out) throws Exception {
-        Iterator<Map.Entry<String, Double>> iterator = runningSums.iterator();
-
-        while (iterator.hasNext()) {
-            Map.Entry<String, Double> entry = iterator.next();
-            String medallionInState = entry.getKey();
+        // On parcourt tous les taxis en mémoire
+        for (Map.Entry<String, Double> entry : runningSums.entries()) {
+            String medallion = entry.getKey();
             Double totalDistance = entry.getValue();
 
-            // Vérification : Est-ce que la ponctuation concerne ce médaillon ?
-            // (Soit c'est le même médaillon, soit c'est null/wildcard qui veut dire "tous")
-            String pattern = p.getMedallion();
-            boolean match = (pattern == null) || pattern.equals(medallionInState);
+            // Astuce : On utilise les dates de la Punctuation pour rendre le résultat lisible
+            String windowStart = Instant.ofEpochMilli(p.getStartTimestamp()).toString();
+            String windowEnd = Instant.ofEpochMilli(p.getEndTimestamp()).toString();
 
-            if (match) {
-                // Création d'un objet résultat (On réutilise TaxiRide pour simplifier)
-                // On met "TOTAL_RESULT" pour bien le distinguer des vraies données
-                TaxiRide result = new TaxiRide(
-                        medallionInState,
-                        "TOTAL_RESULT",
-                        "SUM",
-                        "END_WINDOW",
-                        "END_WINDOW",
-                        totalDistance
-                );
 
-                System.out.println("GROUPBY: Résultat émis pour " + medallionInState + " = " + totalDistance + "km");
-                out.collect(result);
-            }
+            // On crée le résultat
+            TaxiRide result = new TaxiRide(
+                    medallion,          // Le médaillon
+                    "TOTAL_6H",         // HackLicense (Faux)
+                    "RESULT",           // VendorId (Faux)
+                    windowStart,          // On met l'heure de fin dans le Pickup pour info
+                    windowEnd,          // Idem pour Dropoff
+                    totalDistance       // La somme calculée
+            );
+
+            out.collect(result);
         }
+    }
+
+    /**
+     * KEEP : Nettoyage
+     * La fenêtre est finie pour tout le monde. On vide la mémoire pour repartir
+     * à zéro pour la prochaine tranche de 6h.
+     */
+    @Override
+    public void keep(Punctuation p, Context context) throws Exception {
+        // Nettoyage radical : on vide toute la map
+        runningSums.clear();
     }
 
     /**
      * PROP : Propagation
-     * On prévient les opérateurs suivants (ex: un Sort) que c'est fini aussi pour eux.
+     * On transmet l'ordre de fin aux opérateurs suivants.
      */
     @Override
     public void prop(Punctuation p, Context context, Collector<StreamItem> out) throws Exception {
         out.collect(p);
-    }
-
-    /**
-     * KEEP : Nettoyage (Garbage Collection)
-     * Une fois le résultat émis, on doit vider la mémoire pour repartir à 0
-     * pour la prochaine tranche de 6h.
-     */
-    @Override
-    public void keep(Punctuation p, Context context) throws Exception {
-        Iterator<Map.Entry<String, Double>> iterator = runningSums.iterator();
-
-        while (iterator.hasNext()) {
-            Map.Entry<String, Double> entry = iterator.next();
-            String pattern = p.getMedallion();
-
-            // Si la ponctuation matche, on supprime l'entrée de la mémoire
-            if (pattern == null || pattern.equals(entry.getKey())) {
-                iterator.remove(); // C'est ici qu'on libère la RAM !
-            }
-        }
     }
 }
