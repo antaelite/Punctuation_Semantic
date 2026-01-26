@@ -41,7 +41,7 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
     @Override
     public void prop(Punctuation p, Context context, Collector<StreamItem> out) {
         // Simply propagates the punctuation as it arrives.
-        out.collect(p);
+            out.collect(p);
     }
 
     @Override
