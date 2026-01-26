@@ -6,9 +6,10 @@ import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.example.ingestion.PunctuationGenerator;
+import org.example.ingestion.PunctuationInjector;
 import org.example.core.StreamItem;
 import org.example.operators.StreamDuplicateElimination;
+import org.example.operators.StreamGroupBy;
 import org.example.ingestion.TaxiDataMapper;
 
 public class Main {
@@ -16,7 +17,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
-        String filePath = "src/main/resources/sample.csv";
+        String filePath = "src/main/resources/sample_dropofftime.csv";
 
         // reads file
         FileSource<String> source = FileSource.forRecordStreamFormat(
@@ -34,11 +35,11 @@ public class Main {
         // transforms the data stream into a stream of StreamItem objects
         DataStream<StreamItem> stream = lines
                 .map(new TaxiDataMapper())
-                .flatMap(new PunctuationGenerator());
+                .flatMap(new PunctuationInjector());
 
-        // keyBy and 
+        // keyBy and process stream
         DataStream<StreamItem> processedStream = stream
-                .keyBy(item -> "global")
+                .keyBy(item -> "global") // forces Flink to send all StreamItems to the same partition
                 // For streamDuplicate
                 //.process(new StreamDuplicateElimination());
                 // For Query 3

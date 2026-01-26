@@ -4,6 +4,7 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.example.model.TaxiRide;
 
 public class TaxiDataMapper implements MapFunction<String, TaxiRide> {
+
     @Override
     public TaxiRide map(String value) throws Exception {
         String[] values = value.split(",");

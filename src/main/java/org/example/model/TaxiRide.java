@@ -3,11 +3,12 @@ package org.example.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import lombok.Data;
+import lombok.Value;
 import lombok.EqualsAndHashCode;
+
 import org.example.core.StreamItem;
 
-@Data
+@Value
 @EqualsAndHashCode(callSuper = false)
 public class TaxiRide extends StreamItem {
 
@@ -27,6 +28,11 @@ public class TaxiRide extends StreamItem {
 
     public long getPickupTimestamp() {
         return LocalDateTime.parse(pickupDatetime, formatter)
+                .toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
+    }
+
+    public long getDropoffTimestamp() {
+        return LocalDateTime.parse(dropoffDatetime, formatter)
                 .toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
     }
 
