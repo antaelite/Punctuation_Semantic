@@ -6,17 +6,16 @@ import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.example.core.AggregationStrategy;
+import org.example.core.SerializableKeyExtractor;
 import org.example.ingestion.PunctuationInjector;
 import org.example.core.StreamItem;
-import org.example.operators.StreamCountSameBorough;
-import org.example.operators.StreamCountDiffBorough;
+import org.example.operators.*;
 import org.example.ingestion.TaxiDataMapper;
-import org.example.operators.StreamDuplicateElimination;
-import org.example.operators.StreamGroupBy;
 
 public class Main {
 
-    public static void main(String[] args)  {
+    public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
         String filePath = "src/main/resources/sample_dropofftime.csv";
@@ -40,16 +39,24 @@ public class Main {
                 .flatMap(new PunctuationInjector());
 
         // keyBy and process stream
+        // 1. Test : Somme des distances par Médaillon
+        // Dans Main.java, remplacez la ligne de l'opérateur par :
         DataStream<StreamItem> processedStream = stream
-                .keyBy(item -> "global") // forces Flink to send all StreamItems to the same partition
-                // For streamDuplicate
-                .process(new StreamDuplicateElimination());
-                // To count the number of rides in the same borough
-//                .process(new StreamCountSameBorough());
-                // To count the number of rides in different boroughs
-//                 .process(new StreamCountDiffBorough());
-                // To group by
-//                .process(new StreamGroupBy());
+                .keyBy(item -> "global")
+                .process(new StreamDuplicateElimination())
+                .keyBy(item -> "global")
+                .process(new GenericStreamGroupBy(
+                        // On groupe par médaillon
+                        (SerializableKeyExtractor) ride -> ride.medallion,
+
+                        // Stratégie : on récupère le total actuel et on ajoute le nombre de passagers du trajet
+                        (AggregationStrategy) (currentSum, ride) -> currentSum + ride.passengerCount
+                ));
+// 2. Test Alternatif : Distance Max par VendorId et Passagers (si le champ existait)
+// .process(new GenericStreamGroupBy(
+//         ride -> ride.vendorId + "_" + ride.hackLicense,
+//         (max, ride) -> Math.max(max, ride.tripDistance)
+// ));
 
         // print processed stream
         processedStream.print();

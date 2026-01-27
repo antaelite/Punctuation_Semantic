@@ -1,6 +1,8 @@
 package org.example.operators;
 
 import org.apache.flink.api.common.state.MapState;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.example.core.*;
 import org.example.model.Punctuation;
 import org.example.model.TaxiRide;
@@ -19,6 +21,7 @@ public class GenericStreamGroupBy extends PunctuatedIterator {
     private final SerializableKeyExtractor keyExtractor;
     private final AggregationStrategy strategy;
     private MapState<String, Double> state;
+    private ValueState<Long> lastClosedWindowEnd;
 
     public GenericStreamGroupBy(SerializableKeyExtractor keyExtractor, AggregationStrategy strategy) {
         this.keyExtractor = keyExtractor;
@@ -33,13 +36,23 @@ public class GenericStreamGroupBy extends PunctuatedIterator {
         state = getRuntimeContext().getMapState(
                 new MapStateDescriptor<>("genericState", String.class, Double.class)
         );
+        lastClosedWindowEnd = getRuntimeContext().getState(
+                new ValueStateDescriptor<>("lastClosedWindow", Long.class)
+        );
     }
 
     @Override
     public void step(TaxiRide ride, Context context, Collector<StreamItem> out) throws Exception {
         String key = keyExtractor.apply(ride);
         Double current = state.get(key);
+        Long threshold = lastClosedWindowEnd.value();
+
+        if (threshold != null && ride.getDropoffTimestamp() <= threshold) {
+            System.out.println("LATE DATA DROPPED: " + ride.medallion + " at " + ride.dropoffDatetime);
+            return;
+        }
         if (current == null) current = 0.0;
+
         state.put(key, strategy.aggregate(current, ride));
     }
 
@@ -61,6 +74,7 @@ public class GenericStreamGroupBy extends PunctuatedIterator {
     @Override
     public void keep(Punctuation p, Context context) throws Exception {
         state.clear();
+        lastClosedWindowEnd.update(p.getEndTimestamp());
     }
 
     @Override
