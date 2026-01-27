@@ -16,7 +16,7 @@ import org.example.operators.StreamGroupBy;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args)  {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
         String filePath = "src/main/resources/sample_dropofftime.csv";
@@ -43,13 +43,13 @@ public class Main {
         DataStream<StreamItem> processedStream = stream
                 .keyBy(item -> "global") // forces Flink to send all StreamItems to the same partition
                 // For streamDuplicate
-//                .process(new StreamDuplicateElimination());
+                .process(new StreamDuplicateElimination());
                 // To count the number of rides in the same borough
 //                .process(new StreamCountSameBorough());
                 // To count the number of rides in different boroughs
-//                 .process(new org.example.operators.StreamCountDiffBorough());
+//                 .process(new StreamCountDiffBorough());
                 // To group by
-                .process(new StreamGroupBy());
+//                .process(new StreamGroupBy());
 
         // print processed stream
         processedStream.print();

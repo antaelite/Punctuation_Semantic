@@ -18,6 +18,7 @@ public class TaxiRide extends StreamItem {
     public String vendorId;
     public String pickupDatetime; // Keeping as String for simplicity in parsing
     public String dropoffDatetime;
+    public int passengerCount;
     public double tripDistance;
     public String pickupLongitude;
     public String pickupLatitude;
