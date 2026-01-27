@@ -1,7 +1,6 @@
 package org.example.operators;
-
-import org.apache.flink.api.common.state.MapState;
-import org.apache.flink.api.common.state.MapStateDescriptor;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.example.core.PunctuatedIterator;
@@ -10,16 +9,15 @@ import org.example.model.Punctuation;
 import org.example.model.TaxiRide;
 import org.example.utils.GeoUtils;
 
-public class Query3Intra extends PunctuatedIterator {
+public class StreamCountDiffBorough extends PunctuatedIterator {
 
-    // Map: Quartier -> Nombre de trajets
-    private transient MapState<String, Integer> counts;
+    private transient ValueState<Integer> countTrips;
 
     @Override
     public void open(Configuration parameters) {
         GeoUtils.loadBoroughs("src/main/resources/nyc-boroughs.geojson");
-
-        counts = getRuntimeContext().getMapState(new MapStateDescriptor<>("q3Counts", String.class, Integer.class));
+        countTrips = getRuntimeContext().getState(new ValueStateDescriptor<>("q4Count", Integer.class));
+        System.out.println("Count the number of rides that start and end in different borough.");
     }
 
     @Override
@@ -27,10 +25,10 @@ public class Query3Intra extends PunctuatedIterator {
         String start = GeoUtils.getBorough(Double.parseDouble(ride.pickupLongitude), Double.parseDouble(ride.pickupLatitude));
         String end = GeoUtils.getBorough(Double.parseDouble(ride.dropoffLongitude), Double.parseDouble(ride.dropoffLatitude));
 
-        // LOGIQUE Q3 : Départ == Arrivée
-        if (!"Unknown".equals(start) && start.equals(end)) {
-            Integer c = counts.get(start);
-            counts.put(start, (c == null ? 0 : c) + 1);
+        // LOGIQUE Q4 : Départ != Arrivée
+        if (!"Unknown".equals(start) && !start.equals(end)) {
+            Integer c = countTrips.value();
+            countTrips.update((c == null ? 0 : c) + 1);
         }
     }
 
@@ -39,10 +37,8 @@ public class Query3Intra extends PunctuatedIterator {
 
     @Override
     public void keep(Punctuation p, Context context) throws Exception {
-        System.out.println("\n=== RÉSULTATS QUERY 3 (Intra-Borough) ===");
-        for (String b : counts.keys()) {
-            System.out.println("  " + b + " : " + counts.get(b));
-        }
-        counts.clear(); // Nettoyage (Sawtooth)
+        Integer c = countTrips.value();
+        System.out.println("  Nombre de trajets traversant des quartiers : " + (c==null?0:c));
+//        countTrips.clear();
     }
 }

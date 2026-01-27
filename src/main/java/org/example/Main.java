@@ -8,9 +8,11 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.example.ingestion.PunctuationInjector;
 import org.example.core.StreamItem;
+import org.example.operators.StreamCountSameBorough;
+import org.example.operators.StreamCountDiffBorough;
+import org.example.ingestion.TaxiDataMapper;
 import org.example.operators.StreamDuplicateElimination;
 import org.example.operators.StreamGroupBy;
-import org.example.ingestion.TaxiDataMapper;
 
 public class Main {
 
@@ -41,12 +43,13 @@ public class Main {
         DataStream<StreamItem> processedStream = stream
                 .keyBy(item -> "global") // forces Flink to send all StreamItems to the same partition
                 // For streamDuplicate
-                //.process(new StreamDuplicateElimination());
-                // For Query 3
-                .process(new org.example.operators.Query3Intra());
-
-                // Pour la Query 4
-                // .process(new org.example.operators.Query4Inter());
+//                .process(new StreamDuplicateElimination());
+                // To count the number of rides in the same borough
+//                .process(new StreamCountSameBorough());
+                // To count the number of rides in different boroughs
+//                 .process(new org.example.operators.StreamCountDiffBorough());
+                // To group by
+                .process(new StreamGroupBy());
 
         // print processed stream
         processedStream.print();

@@ -1,6 +1,7 @@
 package org.example.operators;
-import org.apache.flink.api.common.state.ValueState;
-import org.apache.flink.api.common.state.ValueStateDescriptor;
+
+import org.apache.flink.api.common.state.MapState;
+import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.example.core.PunctuatedIterator;
@@ -9,14 +10,16 @@ import org.example.model.Punctuation;
 import org.example.model.TaxiRide;
 import org.example.utils.GeoUtils;
 
-public class Query4Inter extends PunctuatedIterator {
+public class StreamCountSameBorough extends PunctuatedIterator {
 
-    private transient ValueState<Integer> totalInterTrips;
+    // Map: Quartier -> Nombre de trajets
+    private transient MapState<String, Integer> count;
 
     @Override
     public void open(Configuration parameters) {
         GeoUtils.loadBoroughs("src/main/resources/nyc-boroughs.geojson");
-        totalInterTrips = getRuntimeContext().getState(new ValueStateDescriptor<>("q4Count", Integer.class));
+        count = getRuntimeContext().getMapState(new MapStateDescriptor<>("q3Counts", String.class, Integer.class));
+        System.out.println("Count the number of rides that start and end in the same borough.");
     }
 
     @Override
@@ -24,10 +27,10 @@ public class Query4Inter extends PunctuatedIterator {
         String start = GeoUtils.getBorough(Double.parseDouble(ride.pickupLongitude), Double.parseDouble(ride.pickupLatitude));
         String end = GeoUtils.getBorough(Double.parseDouble(ride.dropoffLongitude), Double.parseDouble(ride.dropoffLatitude));
 
-        // LOGIQUE Q4 : Départ != Arrivée
-        if (!"Unknown".equals(start) && !start.equals(end)) {
-            Integer c = totalInterTrips.value();
-            totalInterTrips.update((c == null ? 0 : c) + 1);
+        // LOGIQUE Q3 : Départ == Arrivée
+        if (!"Unknown".equals(start) && start.equals(end)) {
+            Integer c = count.get(start);
+            count.put(start, (c == null ? 0 : c) + 1);
         }
     }
 
@@ -36,9 +39,9 @@ public class Query4Inter extends PunctuatedIterator {
 
     @Override
     public void keep(Punctuation p, Context context) throws Exception {
-        Integer c = totalInterTrips.value();
-        System.out.println("\n=== RÉSULTATS QUERY 4 (Inter-Borough) ===");
-        System.out.println("  Nombre de trajets traversant des quartiers : " + (c==null?0:c));
-        totalInterTrips.clear();
+        for (String b : count.keys()) {
+            System.out.println("  " + b + " : " + count.get(b));
+        }
+//        count.clear(); // Nettoyage (Sawtooth)
     }
 }

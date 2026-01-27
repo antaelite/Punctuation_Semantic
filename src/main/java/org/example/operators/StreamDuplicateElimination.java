@@ -16,7 +16,7 @@ import java.util.Map;
 
 public class StreamDuplicateElimination extends PunctuatedIterator {
 
-    private MapState<String, TaxiRide> seenTuples;
+    private MapState<String, TaxiRide> seenTuples; // Map: medallion + pickupDatetime -> TaxiRide
 
     @Override
     public void open(Configuration parameters) {
@@ -60,7 +60,7 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
 
         // Remove them
         for (String key : keysToRemove) {
-            seenTuples.remove(key); // TODO: load into a database
+            seenTuples.remove(key); // TODO: load into a database??
             System.out.println("Removed: " + key);
 
         }
