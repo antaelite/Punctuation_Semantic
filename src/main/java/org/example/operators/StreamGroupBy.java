@@ -5,6 +5,7 @@ import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 
+import org.example.core.GroupByResult;
 import org.example.core.PunctuatedIterator;
 import org.example.core.StreamItem;
 import org.example.model.Punctuation;
@@ -53,8 +54,8 @@ public class StreamGroupBy extends PunctuatedIterator {
             String windowStart = Instant.ofEpochMilli(p.getStartTimestamp()).toString();
             String windowEnd = Instant.ofEpochMilli(p.getEndTimestamp()).toString();
 
-            // On print les résultats
-            System.out.println("  Medallion: " + medallion + ", start: " + windowStart + ", end: " + windowEnd + ", distance: " + totalDistance);
+            out.collect(new GroupByResult(medallion,totalDistance, windowStart, windowEnd));
+
         }
     }
 
@@ -65,7 +66,7 @@ public class StreamGroupBy extends PunctuatedIterator {
     @Override
     public void keep(Punctuation p, Context context) throws Exception {
         // Nettoyage radical : on vide toute la map
-//        runningSums.clear();
+        runningSums.clear();
     }
 
     /**
