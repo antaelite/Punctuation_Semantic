@@ -20,6 +20,8 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
 
     private MapState<String, TaxiRide> seenTuples;
     private ValueState<Long> lastClosedWindowEnd;
+    private int currentMapSize = 0;
+    private int tupleCounter = 0;
 
     @Override
     public void open(Configuration parameters) {
@@ -36,16 +38,23 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
 
         if (threshold != null && taxiRide.getDropoffTimestamp() <= threshold) {
             System.out.println("LATE DATA DROPPED: " + taxiRide.medallion + " at " + taxiRide.dropoffDatetime);
+            tupleCounter++;
             return;
+
         }
         // Use the hashCode of the entire TaxiRide object as the key for exact duplicate detection
         String key = taxiRide.medallion + taxiRide.pickupDatetime;
         if (!seenTuples.contains(key)) {
             seenTuples.put(key, taxiRide);
             out.collect(taxiRide);
+            currentMapSize++;
         } else {
-            System.out.println("Dublicate: " +  taxiRide.medallion );
+            System.out.println("Duplicate: " +  taxiRide.medallion );
         }
+        tupleCounter++;
+        System.out.println("METRIC_STATE_SIZE," + tupleCounter + "," + currentMapSize);
+
+
     }
 
     @Override
@@ -75,10 +84,13 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
         // Remove them
         for (String key : keysToRemove) {
             System.out.println("Removed: " + seenTuples.get(key).medallion);
-            seenTuples.remove(key); // TODO: load into a database
+            seenTuples.remove(key);
+            currentMapSize--;//
 //            System.out.println("Removed: " + key);
 
         }
         lastClosedWindowEnd.update(p.getEndTimestamp());
+        System.out.println("METRIC_STATE_SIZE," + tupleCounter + "," + currentMapSize);
+
     }
 }
