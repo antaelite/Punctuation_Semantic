@@ -13,21 +13,26 @@ public class PunctuationInjector implements FlatMapFunction<TaxiRide, StreamItem
 
     @Override
     public void flatMap(TaxiRide ride, Collector<StreamItem> out) throws Exception {
-        if (ride == null) {
-            return;
-        }
+        if (ride == null) return;
+
         long eventTime = ride.getDropoffTimestamp();
         long currentWindowStart = (eventTime / WINDOW_SIZE) * WINDOW_SIZE;
 
-        // Détection du saut de fenêtre
-        if (lastWindowStart != null && currentWindowStart > lastWindowStart) {
+
+        if (lastWindowStart == null) {
+            lastWindowStart = currentWindowStart;
+        }
+
+
+        if (currentWindowStart > lastWindowStart) {
             long endOfPeriod = currentWindowStart - 1;
+
+
             out.collect(new Punctuation(lastWindowStart, endOfPeriod));
 
+            lastWindowStart = currentWindowStart;
         }
-        lastWindowStart = currentWindowStart;
 
-        // Émission de la donnée
         out.collect(ride);
     }
 }
