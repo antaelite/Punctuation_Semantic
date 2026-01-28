@@ -4,8 +4,7 @@ import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.example.core.*;
-import org.example.model.Punctuation;
-import org.example.model.TaxiRide;
+import org.example.model.*;
 
 
 import org.apache.flink.api.common.state.MapStateDescriptor;
@@ -14,7 +13,6 @@ import org.apache.flink.util.Collector;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.function.Function;
 
 public class GenericStreamGroupBy extends PunctuatedIterator {
 
@@ -59,8 +57,8 @@ public class GenericStreamGroupBy extends PunctuatedIterator {
     @Override
     public void pass(Punctuation p, Context context, Collector<StreamItem> out) throws Exception {
         for (Map.Entry<String, Double> entry : state.entries()) {
-            String start = Instant.ofEpochMilli(p.getStartTimestamp()).toString();
-            String end = Instant.ofEpochMilli(p.getEndTimestamp()).toString();
+            String start = Instant.ofEpochMilli(p.getStart()).toString();
+            String end = Instant.ofEpochMilli(p.getEnd()).toString();
 
             // On utilise le constructeur adapté
             out.collect(new GroupByResult(
@@ -74,11 +72,11 @@ public class GenericStreamGroupBy extends PunctuatedIterator {
     @Override
     public void keep(Punctuation p, Context context) throws Exception {
         state.clear();
-        lastClosedWindowEnd.update(p.getEndTimestamp());
+        lastClosedWindowEnd.update(p.getEnd());
     }
 
     @Override
-    public void prop(Punctuation p, Context context, Collector<StreamItem> out) throws Exception {
+    public void prop(Punctuation p, Context context, Collector<StreamItem> out) {
         out.collect(p);
     }
 }

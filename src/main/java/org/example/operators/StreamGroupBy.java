@@ -7,7 +7,7 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 
-import org.example.core.GroupByResult;
+import org.example.model.GroupByResult;
 import org.example.core.PunctuatedIterator;
 import org.example.core.StreamItem;
 import org.example.model.Punctuation;
@@ -55,10 +55,10 @@ public class StreamGroupBy extends PunctuatedIterator {
             String medallion = entry.getKey();
             Double totalDistance = entry.getValue();
 
-            String windowStart = Instant.ofEpochMilli(p.getStartTimestamp()).toString();
-            String windowEnd = Instant.ofEpochMilli(p.getEndTimestamp()).toString();
+            String windowStart = Instant.ofEpochMilli(p.getStart()).toString();
+            String windowEnd = Instant.ofEpochMilli(p.getEnd()).toString();
 
-            out.collect(new GroupByResult(medallion,totalDistance, windowStart, windowEnd));
+            out.collect(new GroupByResult(medallion, totalDistance, windowStart, windowEnd));
 
         }
     }
@@ -67,12 +67,12 @@ public class StreamGroupBy extends PunctuatedIterator {
     public void keep(Punctuation p, Context context) throws Exception {
 
         runningSums.clear();
-        lastClosedWindowEnd.update(p.getEndTimestamp());
+        lastClosedWindowEnd.update(p.getEnd());
     }
 
 
     @Override
-    public void prop(Punctuation p, Context context, Collector<StreamItem> out) throws Exception {
+    public void prop(Punctuation p, Context context, Collector<StreamItem> out) {
         out.collect(p);
     }
 }

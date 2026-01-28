@@ -6,8 +6,8 @@ import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.example.core.AggregationStrategy;
-import org.example.core.SerializableKeyExtractor;
+import org.example.model.AggregationStrategy;
+import org.example.model.SerializableKeyExtractor;
 import org.example.ingestion.PunctuationInjector;
 import org.example.core.StreamItem;
 import org.example.operators.*;
@@ -15,7 +15,7 @@ import org.example.ingestion.TaxiDataMapper;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
         String filePath = "src/main/resources/sample_dropofftime.csv";
@@ -46,9 +46,7 @@ public class Main {
                 .process(new StreamDuplicateElimination())
                 .keyBy(item -> "global")
                 .process(new GenericStreamGroupBy(
-                        // On groupe par médaillon
-                        (SerializableKeyExtractor) ride -> ride.medallion,
-
+                        (SerializableKeyExtractor) ride -> ride.medallion, // GroupBy médaillon
                         // Stratégie : on récupère le total actuel et on ajoute le nombre de passagers du trajet
                         (AggregationStrategy) (currentSum, ride) -> currentSum + ride.passengerCount
                 ));
