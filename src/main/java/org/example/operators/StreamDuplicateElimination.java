@@ -130,6 +130,7 @@ public class StreamDuplicateElimination extends PunctuatedIterator {
         }
     }
 
+
     @Override
     public void close() throws Exception {
         if (csvWriter != null) {

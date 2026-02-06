@@ -17,8 +17,9 @@ public class Main {
 
     public static void main(String[] args) {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        int nbPunctuationsPerDay = 30;
         env.setParallelism(1);
-        String filePath = "src/main/resources/sample_dropofftime.csv";
+        String filePath = "src/main/resources/all_sorted_dropoff.csv";
 
         // reads file
         FileSource<String> source = FileSource.forRecordStreamFormat(
@@ -36,7 +37,7 @@ public class Main {
         // transforms the data stream into a stream of StreamItem objects
         DataStream<StreamItem> stream = lines
                 .map(new TaxiDataMapper())
-                .flatMap(new PunctuationInjector());
+                .flatMap(new PunctuationInjector(nbPunctuationsPerDay));
 
         // keyBy and process stream
         // 1. Test : Somme des distances par Médaillon
@@ -48,7 +49,9 @@ public class Main {
                 .process(new GenericStreamGroupBy(
                         (SerializableKeyExtractor) ride -> ride.medallion, // GroupBy médaillon
                         // Stratégie : on récupère le total actuel et on ajoute le nombre de passagers du trajet
-                        (AggregationStrategy) (currentSum, ride) -> currentSum + ride.passengerCount
+                        (AggregationStrategy) (currentSum, ride) -> currentSum + ride.passengerCount,
+                        nbPunctuationsPerDay
+
                 ));
 // 2. Test Alternatif : Distance Max par VendorId et Passagers (si le champ existait)
 // .process(new GenericStreamGroupBy(
@@ -59,6 +62,9 @@ public class Main {
         // print processed stream
         processedStream.print();
 
+        long start = System.currentTimeMillis();
+
+
         try {
             env.execute("Replication");
             System.exit(0);
@@ -66,5 +72,7 @@ public class Main {
             e.printStackTrace();
             System.exit(1);
         }
+        long end = System.currentTimeMillis();
+        System.out.println("METRIC_PERF_TOTAL_TIME," + (end - start) + " ms");
     }
 }
